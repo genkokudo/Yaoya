@@ -1,7 +1,11 @@
 ﻿using Yaoya.Core.Contracts.Services;
 using Yaoya.Core.Models;
+using ModelContextProtocol.Server;
+using System.ComponentModel;
 namespace Yaoya.Core.Services;
 
+
+[McpServerToolType]
 public class ProductService: IProductService
 {
     private readonly List<Product> _products;
@@ -25,6 +29,7 @@ public class ProductService: IProductService
     public IReadOnlyList<Product> GetProducts() => _products.AsReadOnly();
 
     // MCPから呼ばれるメソッド
+    [McpServerTool, Description("指定した名前の商品を一覧から削除する")]
     public bool RemoveProduct(string name)
     {
         var target = _products.FirstOrDefault(p => p.Name == name);
