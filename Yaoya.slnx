@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Yaoya.Core.Tests.MSTest/Yaoya.Core.Tests.MSTest.csproj" />
+  <Project Path="Yaoya.Core/Yaoya.Core.csproj" />
+  <Project Path="Yaoya.Tests.MSTest/Yaoya.Tests.MSTest.csproj" />
+  <Project Path="Yaoya/Yaoya.csproj" />
+</Solution>
