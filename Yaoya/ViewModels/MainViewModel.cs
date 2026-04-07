@@ -11,6 +11,10 @@ namespace Yaoya.ViewModels;
 public partial class MainViewModel : ObservableObject, INavigationAware
 {
     private readonly IProductService _productService;
+
+    /// <summary>
+    /// 表示する商品一覧
+    /// </summary>
     public ObservableCollection<Product> Products { get; } = new();
 
     public MainViewModel(IProductService productService)
@@ -29,6 +33,9 @@ public partial class MainViewModel : ObservableObject, INavigationAware
     {
     }
 
+    /// <summary>
+    /// 現在の商品一覧状態を取得してProductsに反映する
+    /// </summary>
     public void LoadProducts()
     {
         Products.Clear();
@@ -42,6 +49,9 @@ public partial class MainViewModel : ObservableObject, INavigationAware
         App.Current.Dispatcher.Invoke(LoadProducts);
     }
 
+    /// <summary>
+    /// 更新ボタン
+    /// </summary>
     [RelayCommand]
     private void Refrash()
     {

@@ -75,12 +75,11 @@ public partial class App : Application
         services.AddSingleton<IPageService, PageService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IProductService, ProductService>();
-        services.AddSingleton(p =>(ProductService)p.GetRequiredService<IProductService>()); // これが無いとMCP用に別インスタンスで生成してしまい、画面更新が上手くいかない
 
-        // MCPサーバ登録：上記サービスよりも後に登録しないとMCP受信時に画面更新できない
+        // MCPサーバ登録：上記サービスよりも後に登録しないとMCP受信時に画面更新できないはず。
         services.AddMcpServer()
                 .WithStdioServerTransport()
-                .WithTools<ProductService>();   // この方法で登録しないとTool認識しない。しかしおかしい、ここのProductServiceは上記のIProductServiceと同一インスタンスでないといけないはずなのに、なぜか別インスタンスで生成されてしまう。上記のSingleton登録も必要なのはそのため。
+                .WithTools<YaoyaMcpTools>();   // アセンブリを検索するのではなく、この方法で登録しないとTool認識しない。ここではYaoyaMcpToolsのインスタンスがMCP用に必ず生成される。AddSingletonしてもそうなるので更新不整合のリスク回避としてデータを持たせない事。
 
         // Views and ViewModels
         services.AddTransient<IShellWindow, ShellWindow>();
