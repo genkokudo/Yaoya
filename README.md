@@ -27,6 +27,7 @@ WinExeを直す。
 ### claude_desktop_config.json
 EXEの配置場所をcommandに書く。  
 これを書くとClaude Desktop起動時に勝手にソフトが起動するので、嫌な場合はバックグラウンドでMCP受信と仲介を行うような代理のソフトを作るしかない。
+この問題はStdioで接続しているためで、HTTP/SSEで通信する方式に変えたら解決するはず。
 ```
 {
   "mcpServers": {
