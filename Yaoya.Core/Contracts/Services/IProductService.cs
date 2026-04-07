@@ -9,4 +9,5 @@ public interface IProductService
 {
     IReadOnlyList<Product> GetProducts();
     bool RemoveProduct(string name);
+    event Action? ProductsChanged;  // 画面更新に使う
 }

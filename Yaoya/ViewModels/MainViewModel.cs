@@ -8,7 +8,7 @@ using Yaoya.Core.Services;
 
 namespace Yaoya.ViewModels;
 
-public class MainViewModel : ObservableObject, INavigationAware
+public partial class MainViewModel : ObservableObject, INavigationAware
 {
     private readonly IProductService _productService;
     public ObservableCollection<Product> Products { get; } = new();
@@ -16,6 +16,8 @@ public class MainViewModel : ObservableObject, INavigationAware
     public MainViewModel(IProductService productService)
     {
         _productService = productService;
+
+        _productService.ProductsChanged += OnProductsChanged;  // MCP受信時に画面更新する
     }
 
     public async void OnNavigatedTo(object parameter)
@@ -34,10 +36,15 @@ public class MainViewModel : ObservableObject, INavigationAware
             Products.Add(p);
     }
 
-    public bool RemoveProduct(string name)
+    private void OnProductsChanged()
     {
-        var result = _productService.RemoveProduct(name);
-        if (result) LoadProducts();
-        return result;
+        // MCPはUIスレッド外から来るのでDispatcher必須！
+        App.Current.Dispatcher.Invoke(LoadProducts);
+    }
+
+    [RelayCommand]
+    private void Refrash()
+    {
+        LoadProducts();
     }
 }

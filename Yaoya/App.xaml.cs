@@ -69,20 +69,18 @@ public partial class App : Application
         // Activation Handlers
 
         // Core Services
-        // MCPサーバ登録
-
-        services.AddMcpServer()
-                .WithStdioServerTransport()
-                .WithTools<ProductService>();
-        //services.AddMcpServer()
-        //        .WithStdioServerTransport()
-        //        .WithToolsFromAssembly();
 
         // Services
         services.AddSingleton<ISampleDataService, SampleDataService>();
         services.AddSingleton<IPageService, PageService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IProductService, ProductService>();
+        services.AddSingleton(p =>(ProductService)p.GetRequiredService<IProductService>()); // これが無いとMCP用に別インスタンスで生成してしまい、画面更新が上手くいかない
+
+        // MCPサーバ登録：上記サービスよりも後に登録しないとMCP受信時に画面更新できない
+        services.AddMcpServer()
+                .WithStdioServerTransport()
+                .WithTools<ProductService>();   // この方法で登録しないとTool認識しない。しかしおかしい、ここのProductServiceは上記のIProductServiceと同一インスタンスでないといけないはずなのに、なぜか別インスタンスで生成されてしまう。上記のSingleton登録も必要なのはそのため。
 
         // Views and ViewModels
         services.AddTransient<IShellWindow, ShellWindow>();

@@ -15,6 +15,8 @@ public class ProductService: IProductService
         _products = GetData();
     }
 
+    public event Action ProductsChanged;
+
     // ダミーデータ
     private static List<Product> GetData() =>
     [
@@ -35,6 +37,7 @@ public class ProductService: IProductService
         var target = _products.FirstOrDefault(p => p.Name == name);
         if (target is null) return false;
         _products.Remove(target);
+        ProductsChanged?.Invoke();  // 画面を更新するためのイベントを発火
         return true;
     }
 }
