@@ -21,11 +21,12 @@ namespace Yaoya;
 
 public partial class App : Application
 {
-    private IHost _host;
+    private IHost _wpfHost;        // WPF用ホスト
+    private WebApplication _webApp; // Kestrel用
 
     public T GetService<T>()
         where T : class
-        => _host.Services.GetService(typeof(T)) as T;
+        => _wpfHost.Services.GetService(typeof(T)) as T;
 
     public App()
     {
@@ -36,81 +37,91 @@ public partial class App : Application
     {
         var appLocation = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
 
+        // ★ WPF用ホスト（元々のやつ）
+        _wpfHost = Host.CreateDefaultBuilder(e.Args)
+            .ConfigureAppConfiguration(c =>
+            {
+                c.SetBasePath(appLocation);
+            })
+            .ConfigureLogging(logging =>
+            {
+                logging.AddConsole(options =>
+                {
+                    options.LogToStandardErrorThreshold = LogLevel.Trace;
+                });
+            })
+            .ConfigureServices(ConfigureWpfServices)
+            .Build();
+
+        // WPFホストはUIスレッドで起動（元々の動作）
+        await _wpfHost.StartAsync();
+
+        // ★ Kestrel用ホストは完全に別で作って別スレッドで起動
         var builder = WebApplication.CreateBuilder(e.Args);
-
-        builder.Configuration.SetBasePath(appLocation);
-
         builder.WebHost.UseUrls("http://localhost:5000");
+        builder.Logging.AddConsole(options =>
+        {
+            options.LogToStandardErrorThreshold = LogLevel.Trace;
+        });
 
-        // サービス登録
-        ConfigureServices(builder.Services, builder.Configuration);
+        // MCPに必要なサービスだけ登録
+        // IProductServiceはWPFホストのものを共有したい場合は引数で渡す
+        builder.Services.AddSingleton(
+            _wpfHost.Services.GetRequiredService<IProductService>()
+        );
+        builder.Services.AddMcpServer()
+            .WithHttpTransport()
+            .WithTools<YaoyaMcpTools>();
 
-        var app = builder.Build();
+        _webApp = builder.Build();
+        _webApp.UseRouting();
+        _webApp.MapMcp();
 
-        // ★ ルーティング明示
-        app.UseRouting();
-
-        // ★ MapMcp()は絶対StartAsyncの前！
-        app.MapMcp("/sse");  // ← パス明示してみる
-
-        // ★ 確認用エンドポイント
-        app.MapGet("/health", () => "yaoya MCP server is running!");
-
-        _host = app;
-        await _host.StartAsync();
+        // ★ Kestrelだけ別スレッドで起動！WPFに一切干渉せん！
+        _ = Task.Factory.StartNew(
+            async () => await _webApp.StartAsync(),
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default
+        );
     }
 
-    private void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+    // WPF用サービス（MCPなし！）
+    private void ConfigureWpfServices(HostBuilderContext context, IServiceCollection services)
     {
-        // App Host
-        services.AddHostedService<ApplicationHostService>();    // 起動はApplicationHostServiceで行う
+        services.AddHostedService<ApplicationHostService>();
 
-        // Activation Handlers
-
-        // Core Services
-
-        // Services
         services.AddSingleton<ISampleDataService, SampleDataService>();
         services.AddSingleton<IPageService, PageService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IProductService, ProductService>();
 
-        // ★ HTTP Transport に変更！
-        services.AddMcpServer()
-                .WithHttpTransport(options =>
-                {
-                    options.Stateless = true;
-                })
-            .WithTools<YaoyaMcpTools>();
-
         // Views and ViewModels
         services.AddTransient<IShellWindow, ShellWindow>();
         services.AddTransient<ShellViewModel>();
-
         services.AddTransient<MainViewModel>();
         services.AddTransient<MainPage>();
-
         services.AddTransient<FreeSpaceViewModel>();
         services.AddTransient<FreeSpacePage>();
-
         services.AddTransient<ProductListViewModel>();
         services.AddTransient<ProductListPage>();
-
         services.AddTransient<ProductListDetailViewModel>();
         services.AddTransient<ProductListDetailPage>();
 
-        // Configuration
-        services.Configure<AppConfig>(configuration.GetSection(nameof(AppConfig)));
+        services.Configure<AppConfig>(context.Configuration.GetSection(nameof(AppConfig)));
     }
 
     private async void OnExit(object sender, ExitEventArgs e)
     {
-        await _host.StopAsync();
-        _host.Dispose();
-        _host = null;
+        await _wpfHost.StopAsync();
+        _wpfHost.Dispose();
+
+        await _webApp.StopAsync();
+        await _webApp.DisposeAsync();
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
     }
+
 }

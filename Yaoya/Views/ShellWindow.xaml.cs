@@ -1,7 +1,6 @@
-﻿using System.Windows.Controls;
-
-using MahApps.Metro.Controls;
-
+﻿using MahApps.Metro.Controls;
+using System.Windows.Controls;
+using System.Windows.Input;
 using Yaoya.Contracts.Views;
 using Yaoya.ViewModels;
 
@@ -23,4 +22,10 @@ public partial class ShellWindow : MetroWindow, IShellWindow
 
     public void CloseWindow()
         => Close();
+
+    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseLeftButtonDown(e);
+        DragMove(); 
+    }
 }
