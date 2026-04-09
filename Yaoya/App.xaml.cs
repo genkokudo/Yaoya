@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.IO;
@@ -29,39 +31,36 @@ public partial class App : Application
     {
     }
 
+
     private async void OnStartup(object sender, StartupEventArgs e)
     {
         var appLocation = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
 
-        // For more information about .NET generic host see  https://docs.microsoft.com/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-3.0
-        //_host = Host.CreateDefaultBuilder(e.Args)
-        //        .ConfigureAppConfiguration(c =>
-        //        {
-        //            c.SetBasePath(appLocation);
-        //        })
-        //        .ConfigureServices(ConfigureServices)
-        //        .Build();
+        var builder = WebApplication.CreateBuilder(e.Args);
 
-        _host = Host.CreateDefaultBuilder(e.Args)
-            .ConfigureAppConfiguration(c =>
-            {
-                c.SetBasePath(appLocation);
-            })
-            .ConfigureLogging(logging =>
-            {
-            // 全ログをstderrに向ける（stdoutはMCP専用にする）
-            logging.AddConsole(options =>
-            {
-                options.LogToStandardErrorThreshold = LogLevel.Trace;
-            });
-        })
-        .ConfigureServices(ConfigureServices)
-        .Build();
+        builder.Configuration.SetBasePath(appLocation);
 
+        builder.WebHost.UseUrls("http://localhost:5000");
+
+        // サービス登録
+        ConfigureServices(builder.Services, builder.Configuration);
+
+        var app = builder.Build();
+
+        // ★ ルーティング明示
+        app.UseRouting();
+
+        // ★ MapMcp()は絶対StartAsyncの前！
+        app.MapMcp("/sse");  // ← パス明示してみる
+
+        // ★ 確認用エンドポイント
+        app.MapGet("/health", () => "yaoya MCP server is running!");
+
+        _host = app;
         await _host.StartAsync();
     }
 
-    private void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+    private void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         // App Host
         services.AddHostedService<ApplicationHostService>();    // 起動はApplicationHostServiceで行う
@@ -76,10 +75,13 @@ public partial class App : Application
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IProductService, ProductService>();
 
-        // MCPサーバ登録：上記サービスよりも後に登録しないとMCP受信時に画面更新できないはず。
+        // ★ HTTP Transport に変更！
         services.AddMcpServer()
-                .WithStdioServerTransport()
-                .WithTools<YaoyaMcpTools>();   // アセンブリを検索するのではなく、この方法で登録しないとTool認識しない。ここではYaoyaMcpToolsのインスタンスがMCP用に必ず生成される。AddSingletonしてもそうなるので更新不整合のリスク回避としてデータを持たせない事。
+                .WithHttpTransport(options =>
+                {
+                    options.Stateless = true;
+                })
+            .WithTools<YaoyaMcpTools>();
 
         // Views and ViewModels
         services.AddTransient<IShellWindow, ShellWindow>();
@@ -98,7 +100,7 @@ public partial class App : Application
         services.AddTransient<ProductListDetailPage>();
 
         // Configuration
-        services.Configure<AppConfig>(context.Configuration.GetSection(nameof(AppConfig)));
+        services.Configure<AppConfig>(configuration.GetSection(nameof(AppConfig)));
     }
 
     private async void OnExit(object sender, ExitEventArgs e)
@@ -110,7 +112,5 @@ public partial class App : Application
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        // TODO: Please log and handle the exception as appropriate to your scenario
-        // For more info see https://docs.microsoft.com/dotnet/api/system.windows.application.dispatcherunhandledexception?view=netcore-3.0
     }
 }
