@@ -42,7 +42,7 @@ _host = Host.CreateDefaultBuilder(e.Args)
 ```
 
 ## Yaoya.csproj
-WinExeを直す。（stdioの場合のみ？）
+WinExeを直す。（stdioの場合のみ）
 ```
 <OutputType>Exe</OutputType>
 ```
@@ -66,6 +66,8 @@ EXEの配置場所をcommandに書く。
 ```
 
 ### HTTP/SSEの場合
+WPFはIHostなので、KestrelのHTTPサーバを自前で立てる必要がある。  
+Microsoft.AspNetCore.AppをNugetで導入。  
 Claude DesktopはローカルHTTP/SSEに直接対応していないため、mcp-remoteを使用する。  
 mcp-remoteを使用するにはNode.jsのインストールが必要。
 ```
@@ -81,5 +83,12 @@ mcp-remoteを使用するにはNode.jsのインストールが必要。
   }
 }
 ```
-と思ったけど、わからん。動かん。
+
+# 問題点
+HTTP/SSEに対応させようとすると、KestrelとWPFのUIスレッドが競合してしまう。  
+現在のソースのようにスレッドを作れば回避できるが、何故かタイトルバーのドラッグができなくなる。（ShellWindow.xaml.csを変更することで無理矢理回避できるが、納得いかない）  
+WPFをやめてBlazor Desktopで作るとか、MCP対応はコンソールアプリだけにするとか、そんな感じで考えよう…。
+
+
+
 
